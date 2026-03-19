@@ -23,22 +23,62 @@ from pathlib import Path
 from datetime import datetime
 
 # ─── .env 로드 ────────────────────────────────────────────────────────────────
+# 우선순위: 스크립트 폴더(.env) → 스크립트 상위 폴더 → git 루트 → 현재 디렉토리
+# jira-toolkit/.env 하나만 관리하면 모든 프로젝트에서 공유 가능
 
-def load_env(env_path: str = r"C:/Users/USER/Desktop/hellomd/.env") -> dict:
+def _parse_env_file(path: Path) -> dict:
     env = {}
     try:
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    k, _, v = line.partition("=")
-                    env[k.strip()] = v.strip().strip('"').strip("'")
-    except FileNotFoundError:
-        print(f"[ERROR] .env 파일을 찾을 수 없습니다: {env_path}")
-        sys.exit(1)
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            env[k.strip()] = v.strip().strip('"').strip("'")
+    except Exception:
+        pass
     return env
+
+
+def load_env() -> dict:
+    script_dir = Path(__file__).resolve().parent
+
+    candidates = [
+        script_dir / ".env",           # jira-toolkit/automation/jira/.env
+        script_dir.parent.parent / ".env",  # jira-toolkit/.env
+        Path.cwd() / ".env",           # 현재 프로젝트 루트 .env (fallback)
+    ]
+
+    # git 루트도 후보에 추가
+    try:
+        git_root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            text=True, encoding="utf-8", errors="replace"
+        ).strip()
+        candidates.append(Path(git_root) / ".env")
+    except Exception:
+        pass
+
+    env = {}
+    loaded_from = None
+    for path in candidates:
+        if path.exists():
+            env = _parse_env_file(path)
+            loaded_from = path
+            break
+
+    if not env:
+        print("[ERROR] .env 파일을 찾을 수 없습니다.")
+        print("찾은 위치:")
+        for c in candidates:
+            print(f"  {c}")
+        print("\n→ jira-toolkit/automation/jira/.env 또는 jira-toolkit/.env 에 생성하세요.")
+        print("  cp automation/jira/env.example automation/jira/.env")
+        sys.exit(1)
+
+    print(f"[.env] {loaded_from}")
+    return env
+
 
 ENV = load_env()
 
