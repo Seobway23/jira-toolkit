@@ -65,41 +65,67 @@ def main():
     config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"✅ {config_path}")
 
-    # 2. GitHub Actions caller 생성
+    # 2. GitHub Actions workflow 생성 (커밋 push 기반 Done 전환)
     workflow_dir = target / ".github" / "workflows"
     workflow_dir.mkdir(parents=True, exist_ok=True)
-    workflow_path = workflow_dir / "jira.yml"
-    workflow_content = """\
-name: Jira Sync
+    workflow_path = workflow_dir / "jira_done_on_merge.yml"
+    workflow_content = f"""\
+# main 브랜치에 push되면 커밋 메시지의 Jira 이슈 키를 찾아 Done으로 전환합니다.
+# 전제: GitHub Secrets에 JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_KEY 등록 필요.
+
+name: Jira Done On Push To Main
+
 on:
-  pull_request:
-    types: [opened, closed]
+  push:
+    branches:
+      - {args.branch}
+
 jobs:
-  sync:
+  jira-done:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - run: pip install requests
-      - name: Sync to Jira
+
+      - name: Mark Jira issues Done from commit messages
         env:
-          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
-          GITHUB_EVENT_ACTION: ${{ github.event.action }}
-          GITHUB_PR_TITLE: ${{ github.event.pull_request.title }}
-          GITHUB_PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_PR_MERGED: ${{ toJson(github.event.pull_request.merged) }}
+          JIRA_BASE_URL: ${{{{ secrets.JIRA_BASE_URL }}}}
+          JIRA_EMAIL: ${{{{ secrets.JIRA_EMAIL }}}}
+          JIRA_API_KEY: ${{{{ secrets.JIRA_API_KEY }}}}
         run: |
           TOOLKIT=$(python -c "import json; print(json.load(open('jira.config.json'))['toolkit'])")
           BASE="https://raw.githubusercontent.com/$TOOLKIT/main/automation/jira"
           curl -sSfL "$BASE/pr_event_sync.py" -o pr_event_sync.py
-          curl -sSfL "$BASE/ci_pr_event_entrypoint.py" -o ci_pr_event_entrypoint.py
-          python ci_pr_event_entrypoint.py --source github
+
+          BEFORE="${{{{ github.event.before }}}}"
+          AFTER="${{{{ github.event.after }}}}"
+
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            MSGS=$(git log -1 --format="%s")
+          else
+            MSGS=$(git log "$BEFORE..$AFTER" --format="%s" 2>/dev/null || git log -1 --format="%s")
+          fi
+
+          echo "커밋 메시지:"
+          echo "$MSGS"
+
+          KEYS=$(echo "$MSGS" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | sort -u)
+          echo "감지된 Jira 키: $KEYS"
+
+          for KEY in $KEYS; do
+            echo "→ $KEY Done 처리 중..."
+            python pr_event_sync.py \\
+              --event merged \\
+              --title "$KEY: pushed to {args.branch}" \\
+              --url "https://github.com/${{{{ github.repository }}}}/commit/$AFTER" || echo "[skip] $KEY 처리 실패, 다음 키로 계속"
+          done
 """
     workflow_path.write_text(workflow_content, encoding="utf-8")
     print(f"✅ {workflow_path}")

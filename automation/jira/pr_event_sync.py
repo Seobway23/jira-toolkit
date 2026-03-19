@@ -185,10 +185,12 @@ def main() -> None:
         raise SystemExit("Missing Jira env: JIRA_BASE_URL, JIRA_EMAIL(or USER_EMAIL), JIRA_API_KEY")
 
     headers = jira_headers(jira_base, jira_email, jira_token)
-    try:
-        ensure_issue_exists(jira_base, issue_key, headers, args.title)
-    except Exception as e:
-        print(f"[warn] Issue ensure failed for {issue_key}: {e}")
+
+    # 이슈 존재 여부 확인 - 없으면 skip (auto-create 하지 않음)
+    check = requests.get(f"{jira_base}/rest/api/3/issue/{issue_key}", headers=headers, timeout=20)
+    if check.status_code == 404:
+        print(f"[skip] {issue_key} not found in Jira. Skipping.")
+        return
 
     try:
         add_jira_comment(jira_base, issue_key, headers, summary)
