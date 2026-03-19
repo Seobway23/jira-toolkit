@@ -1,0 +1,53 @@
+# 새 브랜치 push 시 Jira 이슈 자동 생성 + In Progress 전환
+# 브랜치명 예: feature/kpi-dashboard → Jira Story "kpi dashboard" 생성
+# 단, 이미 .current-scrum-key가 있거나 커밋 메시지에 SCRUM 키가 있으면 스킵
+
+name: Jira Auto Create Issue on Branch Push
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
+      - 'refactor/**'
+      - 'hotfix/**'
+
+jobs:
+  create-jira-issue:
+    runs-on: ubuntu-latest
+    # main/dev 브랜치 직접 push 제외
+    if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Check if commits already have Jira keys
+        id: check_keys
+        run: |
+          # 최근 커밋 메시지에서 SCRUM 키 확인
+          KEYS=$(git log --format="%s" -5 | grep -oE '[A-Z]+-[0-9]+' | head -1 || true)
+          echo "found_key=$KEYS" >> $GITHUB_OUTPUT
+          if [ -n "$KEYS" ]; then
+            echo "Commits already have Jira key: $KEYS — skipping auto-create"
+          else
+            echo "No Jira key found in recent commits — will create issue"
+          fi
+
+      - name: Auto-create Jira issue
+        if: steps.check_keys.outputs.found_key == ''
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: python automation/jira/branch_issue_auto_create.py

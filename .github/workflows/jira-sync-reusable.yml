@@ -9,6 +9,10 @@ on:
       pr_title:
         required: true
         type: string
+      pr_body:
+        required: false
+        type: string
+        default: ''
       pr_url:
         required: false
         type: string
@@ -52,6 +56,7 @@ jobs:
           NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
           GITHUB_EVENT_ACTION: ${{ inputs.event_action }}
           GITHUB_PR_TITLE: ${{ inputs.pr_title }}
+          GITHUB_PR_BODY: ${{ inputs.pr_body }}
           GITHUB_PR_URL: ${{ inputs.pr_url }}
           GITHUB_PR_MERGED: ${{ inputs.pr_merged }}
         run: python automation/jira/ci_pr_event_entrypoint.py --source github
