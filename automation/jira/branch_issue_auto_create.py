@@ -270,6 +270,7 @@ def main():
         result = create_issue(summary, issue_type)
     except Exception as e:
         print(f"[ERROR] Jira 이슈 생성 실패: {e}")
+        print(f"::error::Jira issue creation failed: {type(e).__name__}: {e}")
         sys.exit(1)
 
     issue_key = result["key"]
