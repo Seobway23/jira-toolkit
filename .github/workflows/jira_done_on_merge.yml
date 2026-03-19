@@ -1,13 +1,19 @@
-# main 브랜치에 push되면 커밋 메시지의 Jira 이슈 키를 찾아 Done으로 전환합니다.
-# PR merge 여부와 무관하게 커밋 단위로 동작합니다.
-# 전제: GitHub Secrets에 JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_KEY 등록 필요.
+# Reusable workflow: 다른 저장소에서 호출 가능
+# 호출 방법:
+#   uses: Seobway23/jira-toolkit/.github/workflows/jira_done_on_merge.yml@main
+#   secrets: inherit
 
 name: Jira Done On Push To Main
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    secrets:
+      JIRA_BASE_URL:
+        required: true
+      JIRA_EMAIL:
+        required: true
+      JIRA_API_KEY:
+        required: true
 
 jobs:
   jira-done:
@@ -29,6 +35,9 @@ jobs:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
         run: |
+          BASE="https://raw.githubusercontent.com/Seobway23/jira-toolkit/main/automation/jira"
+          curl -sSfL "$BASE/pr_event_sync.py" -o pr_event_sync.py
+
           BEFORE="${{ github.event.before }}"
           AFTER="${{ github.event.after }}"
 
@@ -46,7 +55,7 @@ jobs:
 
           for KEY in $KEYS; do
             echo "→ $KEY Done 처리 중..."
-            python automation/jira/pr_event_sync.py \
+            python pr_event_sync.py \
               --event merged \
               --title "$KEY: pushed to main" \
               --url "https://github.com/${{ github.repository }}/commit/$AFTER" || echo "[skip] $KEY 처리 실패, 다음 키로 계속"
