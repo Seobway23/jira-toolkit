@@ -1,0 +1,34 @@
+name: Jira Done On PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  transition-jira:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        shell: bash
+        run: pip install requests
+
+      - name: Sync PR event to Jira/Notion
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
+          GITHUB_EVENT_ACTION: ${{ github.event.action }}
+          GITHUB_PR_TITLE: ${{ github.event.pull_request.title }}
+          GITHUB_PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_PR_MERGED: ${{ github.event.pull_request.merged }}
+        shell: bash
+        run: python automation/jira/ci_pr_event_entrypoint.py --source github

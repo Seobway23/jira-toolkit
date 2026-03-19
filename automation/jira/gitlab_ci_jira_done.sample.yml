@@ -1,0 +1,11 @@
+stages:
+  - jira-sync
+
+jira_done_on_merge:
+  stage: jira-sync
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - pip install requests
+    - python automation/jira/ci_pr_event_entrypoint.py --source gitlab

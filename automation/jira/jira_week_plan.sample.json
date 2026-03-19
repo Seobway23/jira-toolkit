@@ -1,0 +1,52 @@
+{
+  "workspace": "default",
+  "sprint_name": "Auto Sprint - Week 1",
+  "goal": "핵심 KPI 자동수집 기반 작업 1주차 완료",
+  "days": 7,
+  "issues": [
+    {
+      "ref": "epic-kpi-foundation",
+      "summary": "[KPI] 이벤트 스키마 배포",
+      "description": "fact_event/dim 테이블 생성 및 초기 인덱스 구성",
+      "issue_type": "Epic",
+      "labels": ["kpi", "foundation"],
+      "story_points": 5
+    },
+    {
+      "ref": "task-jira-webhook",
+      "parent_ref": "epic-kpi-foundation",
+      "summary": "[KPI] Jira 웹훅 수집기 연결",
+      "description": "jira issue created/updated 이벤트 수집 및 정규화",
+      "issue_type": "Task",
+      "labels": ["jira", "webhook"],
+      "story_points": 3
+    },
+    {
+      "ref": "story-ci-events",
+      "parent_ref": "epic-kpi-foundation",
+      "summary": "[KPI] CI 배포 이벤트 수집",
+      "description": "GitHub Actions/GitLab CI/Jenkins 배포 이벤트를 공통 스키마로 적재",
+      "issue_type": "Story",
+      "labels": ["ci", "events"],
+      "story_points": 8
+    },
+    {
+      "ref": "task-mttr-availability",
+      "parent_ref": "epic-kpi-foundation",
+      "summary": "[KPI] MTTR/가용성 쿼리 검증",
+      "description": "incident_started/resolved, health sample 기반 지표 검증",
+      "issue_type": "Task",
+      "labels": ["operations", "slo"],
+      "story_points": 3
+    },
+    {
+      "ref": "story-grafana-dashboard",
+      "parent_ref": "epic-kpi-foundation",
+      "summary": "[KPI] Grafana 대시보드 초안",
+      "description": "7개 KPI 주간 대시보드 패널 구성 및 검증",
+      "issue_type": "Story",
+      "labels": ["grafana", "dashboard"],
+      "story_points": 5
+    }
+  ]
+}

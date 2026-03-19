@@ -1,0 +1,6 @@
+.env
+.env.*
+.current-scrum-key
+__pycache__/
+*.pyc
+*.pyo
