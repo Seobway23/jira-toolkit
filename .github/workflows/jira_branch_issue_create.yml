@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 5
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,13 +34,13 @@ jobs:
       - name: Check if commits already have Jira keys
         id: check_keys
         run: |
-          # 최근 커밋 메시지에서 SCRUM 키 확인
-          KEYS=$(git log --format="%s" -5 | grep -oE '[A-Z]+-[0-9]+' | head -1 || true)
+          # main 분기 이후 커밋에서만 SCRUM 키 확인 (main 히스토리 제외)
+          KEYS=$(git log origin/main..HEAD --format="%s" | grep -oE '[A-Z]+-[0-9]+' | head -1 || true)
           echo "found_key=$KEYS" >> $GITHUB_OUTPUT
           if [ -n "$KEYS" ]; then
-            echo "Commits already have Jira key: $KEYS — skipping auto-create"
+            echo "Branch commits already have Jira key: $KEYS — skipping auto-create"
           else
-            echo "No Jira key found in recent commits — will create issue"
+            echo "No Jira key in branch commits — will create issue"
           fi
 
       - name: Auto-create Jira issue
