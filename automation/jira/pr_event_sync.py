@@ -149,19 +149,31 @@ def main() -> None:
         raise SystemExit("Missing Jira env: JIRA_BASE_URL, JIRA_EMAIL(or USER_EMAIL), JIRA_API_KEY")
 
     headers = jira_headers(jira_base, jira_email, jira_token)
-    add_jira_comment(jira_base, issue_key, headers, summary)
+    try:
+        add_jira_comment(jira_base, issue_key, headers, summary)
+    except Exception as e:
+        print(f"[warn] Jira comment failed for {issue_key}: {e}")
 
     if args.event == "opened":
-        moved = transition_in_review(jira_base, issue_key, headers)
-        print(f"Transitioned to In Review: {moved}")
+        try:
+            moved = transition_in_review(jira_base, issue_key, headers)
+            print(f"Transitioned to In Review: {moved}")
+        except Exception as e:
+            print(f"[warn] In Review transition failed for {issue_key}: {e}")
 
     if args.event == "merged":
-        moved = transition_done(jira_base, issue_key, headers)
-        print(f"Transitioned to Done: {moved}")
+        try:
+            moved = transition_done(jira_base, issue_key, headers)
+            print(f"Transitioned to Done: {moved}")
+        except Exception as e:
+            print(f"[warn] Done transition failed for {issue_key}: {e}")
 
     if notion_token and notion_db:
-        upsert_notion_log(notion_token, notion_db, issue_key, args.event, summary)
-        print("Notion log created")
+        try:
+            upsert_notion_log(notion_token, notion_db, issue_key, args.event, summary)
+            print("Notion log created")
+        except Exception as e:
+            print(f"[warn] Notion log failed: {e}")
 
 
 if __name__ == "__main__":
