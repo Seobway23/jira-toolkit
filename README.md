@@ -19,6 +19,18 @@ PR 머지  →  Jira 자동으로 Done
 
 ---
 
+## 포크해서 쓰기 (권장)
+
+이 레포를 **포크** 후 `jira-sync-reusable.yml@main`의 `Seobway23`을 본인 username으로 바꾸고,
+각 프로젝트의 `jira.yml` caller도 동일하게 변경.
+
+```yaml
+# 포크 후 변경
+uses: 내username/jira-toolkit/.github/workflows/jira-sync-reusable.yml@main
+```
+
+---
+
 ## 설치 (새 프로젝트에 주입)
 
 ```bash
@@ -44,11 +56,20 @@ your-project/
 
 ---
 
-## 환경변수 설정
+## 환경변수 설정 (.env 위치)
+
+**.env는 jira-toolkit 루트 하나만 관리** — 모든 프로젝트에서 공유.
+
+```
+jira-toolkit/
+  .env          ← 여기 하나만 있으면 됨 ✅
+  automation/jira/
+    .env        ← 여기도 OK (우선순위 더 높음)
+```
 
 ```bash
 cp automation/jira/env.example .env
-# .env 열어서 값 채우기
+# .env 열어서 값 채우기 (프로젝트마다 만들 필요 없음)
 ```
 
 ```env
