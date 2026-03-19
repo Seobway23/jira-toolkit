@@ -50,6 +50,42 @@ def transition_in_review(base_url: str, issue_key: str, headers: Dict[str, str])
     return transition_status(base_url, issue_key, headers, ["review", "검토", "리뷰", "in review"])
 
 
+def issue_exists(base_url: str, issue_key: str, headers: Dict[str, str]) -> bool:
+    r = requests.get(f"{base_url}/rest/api/3/issue/{issue_key}", headers=headers, timeout=20)
+    return r.status_code == 200
+
+
+def ensure_issue_exists(base_url: str, issue_key: str, headers: Dict[str, str], pr_title: str) -> None:
+    """이슈가 없으면 PR 제목 기반으로 자동 생성"""
+    if issue_exists(base_url, issue_key, headers):
+        return
+    print(f"[info] {issue_key} not found in Jira — auto-creating from PR title")
+    project_key = issue_key.rsplit("-", 1)[0]
+    summary = re.sub(r"^[A-Z]+-\d+[:\s]*", "", pr_title).strip() or pr_title
+    payload = {
+        "fields": {
+            "project": {"key": project_key},
+            "summary": summary,
+            "issuetype": {"name": "Story"},
+            "description": {
+                "type": "doc", "version": 1,
+                "content": [{"type": "paragraph", "content": [{"type": "text", "text": f"Auto-created from PR: {pr_title}"}]}],
+            },
+        }
+    }
+    r = requests.post(f"{base_url}/rest/api/3/issue", headers=headers, json=payload, timeout=20)
+    if r.status_code == 201:
+        print(f"[info] Created {r.json().get('key')} in Jira")
+    else:
+        # 이슈 타입 실패 시 Task로 재시도
+        payload["fields"]["issuetype"] = {"name": "Task"}
+        r2 = requests.post(f"{base_url}/rest/api/3/issue", headers=headers, json=payload, timeout=20)
+        if r2.status_code == 201:
+            print(f"[info] Created {r2.json().get('key')} as Task")
+        else:
+            print(f"[warn] Could not create issue: {r2.status_code} {r2.text[:200]}")
+
+
 def add_jira_comment(base_url: str, issue_key: str, headers: Dict[str, str], text: str) -> None:
     payload = {
         "body": {
@@ -149,6 +185,11 @@ def main() -> None:
         raise SystemExit("Missing Jira env: JIRA_BASE_URL, JIRA_EMAIL(or USER_EMAIL), JIRA_API_KEY")
 
     headers = jira_headers(jira_base, jira_email, jira_token)
+    try:
+        ensure_issue_exists(jira_base, issue_key, headers, args.title)
+    except Exception as e:
+        print(f"[warn] Issue ensure failed for {issue_key}: {e}")
+
     try:
         add_jira_comment(jira_base, issue_key, headers, summary)
     except Exception as e:
