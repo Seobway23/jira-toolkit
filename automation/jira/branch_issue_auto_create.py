@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 # ─── 설정 ─────────────────────────────────────────────────────────────────────
@@ -114,17 +115,37 @@ def get_epic_key() -> str | None:
 
 def get_account_id() -> str | None:
     try:
-        r = jira_api("GET", f"user/search?query={urllib.request.quote(JIRA_EMAIL)}")
+        r = jira_api("GET", f"user/search?query={urllib.parse.quote(JIRA_EMAIL)}")
         return r[0]["accountId"] if r else None
     except Exception as e:
         print(f"[warn] 사용자 조회 실패: {e}")
         return None
 
 
-def get_issue_types() -> list[str]:
+def resolve_project_key(preferred: str) -> str:
+    """preferred 키가 없으면 첫 번째 Jira 프로젝트 키 반환"""
+    try:
+        r = jira_api("GET", f"project/{preferred}")
+        return r.get("key", preferred)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            # 프로젝트 못 찾음 → 전체 목록에서 첫 번째 사용
+            try:
+                projects = jira_api("GET", "project/search?maxResults=1")
+                vals = projects.get("values", [])
+                if vals:
+                    key = vals[0]["key"]
+                    print(f"[warn] 프로젝트 '{preferred}' 없음. '{key}' 사용")
+                    return key
+            except Exception as e2:
+                print(f"[warn] 프로젝트 목록 조회 실패: {e2}")
+        return preferred
+
+
+def get_issue_types(project_key: str) -> list[str]:
     """프로젝트에서 사용 가능한 이슈 타입 조회"""
     try:
-        r = jira_api("GET", f"project/{JIRA_PROJECT}")
+        r = jira_api("GET", f"project/{project_key}")
         types = r.get("issueTypes", [])
         return [t["name"] for t in types]
     except Exception:
@@ -135,19 +156,20 @@ def get_issue_types() -> list[str]:
 
 
 def create_issue(summary: str, issue_type: str) -> dict:
+    project_key = resolve_project_key(JIRA_PROJECT)
     sprint_id = get_active_sprint_id()
     account_id = get_account_id()
     epic_key = get_epic_key()
 
     # 이슈 타입이 프로젝트에 없으면 Task로 폴백
-    available_types = get_issue_types()
+    available_types = get_issue_types(project_key)
     if available_types and issue_type not in available_types:
         fallback = next((t for t in ["Task", "Story", "Bug"] if t in available_types), available_types[0])
         print(f"[warn] '{issue_type}' 타입 없음. '{fallback}'로 대체 (사용 가능: {available_types})")
         issue_type = fallback
 
     fields: dict = {
-        "project": {"key": JIRA_PROJECT},
+        "project": {"key": project_key},
         "summary": summary,
         "issuetype": {"name": issue_type},
         "description": {
