@@ -31,6 +31,7 @@ jobs:
           NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
           GITHUB_EVENT_ACTION: ${{ github.event.action }}
           GITHUB_PR_TITLE: ${{ github.event.pull_request.title }}
+          GITHUB_PR_BODY: ${{ github.event.pull_request.body }}
           GITHUB_PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_PR_MERGED: ${{ github.event.pull_request.merged }}
         run: python automation/jira/ci_pr_event_entrypoint.py --source github

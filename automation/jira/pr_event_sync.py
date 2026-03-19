@@ -85,6 +85,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Sync PR event to Jira/Notion")
     p.add_argument("--event", required=True, choices=["opened", "merged", "closed", "updated"])
     p.add_argument("--title", required=True)
+    p.add_argument("--body", default="")
     p.add_argument("--url", default="")
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
@@ -125,9 +126,10 @@ def preload_env() -> None:
 def main() -> None:
     preload_env()
     args = parse_args()
-    m = re.search(r"[A-Z]+-\d+", args.title)
+    search_text = args.title + " " + args.body
+    m = re.search(r"[A-Z]+-\d+", search_text)
     if not m:
-        print("No Jira key in title. Skip.")
+        print("No Jira key in title or body. Skip.")
         return
     issue_key = m.group(0)
 
