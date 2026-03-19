@@ -123,23 +123,32 @@ def get_account_id() -> str | None:
 
 
 def resolve_project_key(preferred: str) -> str:
-    """preferred 키가 없으면 첫 번째 Jira 프로젝트 키 반환"""
+    """preferred 키가 없으면 Jira 내 첫 번째 프로젝트 키 자동 감지"""
+    # 1) preferred 키 직접 확인
     try:
         r = jira_api("GET", f"project/{preferred}")
         return r.get("key", preferred)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            # 프로젝트 못 찾음 → 전체 목록에서 첫 번째 사용
-            try:
-                projects = jira_api("GET", "project/search?maxResults=1")
-                vals = projects.get("values", [])
-                if vals:
-                    key = vals[0]["key"]
-                    print(f"[warn] 프로젝트 '{preferred}' 없음. '{key}' 사용")
-                    return key
-            except Exception as e2:
-                print(f"[warn] 프로젝트 목록 조회 실패: {e2}")
-        return preferred
+    except urllib.error.HTTPError:
+        pass  # 404 or other → fall through to auto-detect
+
+    # 2) 프로젝트 목록에서 첫 번째 키 자동 감지 (GET /project → array 직접 반환)
+    try:
+        projects = jira_api("GET", "project?maxResults=50")
+        # Jira v3: array 또는 {"values": [...]} 둘 다 대응
+        if isinstance(projects, list):
+            vals = projects
+        else:
+            vals = projects.get("values", [])
+        if vals:
+            key = vals[0]["key"]
+            print(f"[warn] 프로젝트 '{preferred}' 없음 → 자동 감지: '{key}'")
+            print(f"[info] 사용 가능한 프로젝트: {[p['key'] for p in vals[:5]]}")
+            return key
+    except Exception as e:
+        print(f"[warn] 프로젝트 목록 조회 실패: {e}")
+
+    print(f"[error] 프로젝트를 찾을 수 없음. JIRA_PROJECT_KEY secret을 올바른 키로 설정하세요.")
+    return preferred
 
 
 def get_issue_types(project_key: str) -> list[str]:
