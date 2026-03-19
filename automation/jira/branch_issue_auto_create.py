@@ -27,7 +27,7 @@ import urllib.request
 JIRA_BASE = os.getenv("JIRA_BASE_URL", "").rstrip("/")
 JIRA_EMAIL = os.getenv("JIRA_EMAIL", "")
 JIRA_API_KEY = os.getenv("JIRA_API_KEY", "")
-JIRA_PROJECT = os.getenv("JIRA_PROJECT_KEY", "SCRUM")
+JIRA_PROJECT = os.getenv("JIRA_PROJECT_KEY") or "SCRUM"  # 빈 문자열도 SCRUM 폴백
 BRANCH_NAME = os.getenv("BRANCH_NAME", "")
 
 PREFIX_TO_ISSUETYPE = {
