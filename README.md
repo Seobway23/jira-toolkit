@@ -100,6 +100,7 @@ GitHub 저장소 → Settings → Secrets and variables → Actions
 | `JIRA_BASE_URL` | `https://your-domain.atlassian.net` |
 | `JIRA_EMAIL` | `you@company.com` |
 | `JIRA_API_KEY` | Jira API 토큰 |
+| `JIRA_PROJECT_KEY` | 'SCRUM' |
 
 ---
 
