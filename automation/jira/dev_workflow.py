@@ -230,6 +230,7 @@ def create_jira_issue(
     """Jira 이슈 생성 → {"key": "SCRUM-38", "url": "..."}"""
     sprint_id = get_active_sprint_id()
     account_id = get_account_id()
+    today = datetime.now().strftime("%Y-%m-%d")
 
     fields: dict = {
         "project": {"key": JIRA_PROJECT},
@@ -242,8 +243,8 @@ def create_jira_issue(
                 {"type": "paragraph", "content": [{"type": "text", "text": description or summary}]}
             ],
         },
-        "story_points": story_points,
-        "customfield_10016": story_points,  # Story Points 필드
+        "customfield_10016": story_points,  # Story point estimate
+        "customfield_10015": today,         # Start date
     }
 
     if sprint_id:
